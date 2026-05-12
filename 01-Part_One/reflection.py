@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #   "flyte>=2.0.0",
-#   "anthropic>=0.40.0",
+#   "openai>=1.0.0",
 # ]
 # ///
 """
@@ -34,7 +34,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-import anthropic
+from openai import AsyncOpenAI, OpenAI
 import flyte
 import flyte.report
 
@@ -77,7 +77,7 @@ class ConversationMemory:
         return ConversationMemory(messages=self.messages + [Message(role, content)])
 
     def to_api_format(self) -> list[dict]:
-        """Convert to the Anthropic messages API format."""
+        """Convert to the OpenAI messages API format."""
         return [{"role": m.role, "content": m.content} for m in self.messages]
 
 
@@ -97,7 +97,7 @@ class ReflectionResult:
 
 _image = (
     flyte.Image.from_debian_base(name="reflection-agent", python_version=(3, 12))
-    .with_pip_packages("anthropic>=0.40.0").with_env_vars(ANTHROPIC_API_KEY=os.environ['ANTHROPIC_API_KEY'])  # for local testing; overridden by secret in production
+    .with_pip_packages("openai>=1.0.0").with_env_vars(OPENAI_API_KEY=os.environ['OPENAI_API_KEY'])  # for local testing; overridden by secret in production
 )
 
 reflection_env = flyte.TaskEnvironment(
@@ -106,8 +106,8 @@ reflection_env = flyte.TaskEnvironment(
     resources=flyte.Resources(cpu="1", memory="2Gi"),
    # secrets=[
         # Create the secret once via CLI before running:
-        #   flyte create secret anthropic_api_key <your-key>
-    #    flyte.Secret(key="ANTHROPIC_API_KEY", as_env_var="ANTHROPIC_API_KEY"),
+        #   flyte create secret openai_api_key <your-key>
+    #    flyte.Secret(key="OPENAI_API_KEY", as_env_var="OPENAI_API_KEY"),
     #],
     # ReusePolicy: keeps containers warm across multiple LLM calls in the loop.
     # A cold-start cost is paid only for the first iteration; subsequent
@@ -167,7 +167,7 @@ async def _produce(
     Iteration 0 → initial code generation from the task prompt.
     Iteration N → refinement guided by the critique already in memory.
     """
-    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     messages = memory.to_api_format()
     if iteration > 0:
@@ -176,13 +176,12 @@ async def _produce(
             "content": "Refine the code to fully address all critique points listed above.",
         })
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=4096,
-        system=PRODUCER_SYSTEM,
-        messages=messages,
+        messages=[{"role": "system", "content": PRODUCER_SYSTEM}] + messages,
     )
-    return response.content[0].text
+    return response.choices[0].message.content
 
 
 @flyte.trace
@@ -193,13 +192,12 @@ async def _critique(task_prompt: str, code: str) -> str:
     preserve the separation-of-concerns design from the chapter: the critic
     evaluates output objectively, without bias from the producer's context.
     """
-    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=2048,
-        system=CRITIC_SYSTEM,
-        messages=[
+        messages=[{"role": "system", "content": CRITIC_SYSTEM}] + [,
             {
                 "role": "user",
                 "content": (
@@ -209,7 +207,7 @@ async def _critique(task_prompt: str, code: str) -> str:
             }
         ],
     )
-    return response.content[0].text
+    return response.choices[0].message.content
 
 
 # ---------------------------------------------------------------------------
