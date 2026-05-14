@@ -28,10 +28,8 @@ Run locally (no Flyte tracking):
     python chapter_04_reflection.py
 """
 
-from __future__ import annotations
-
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 
 from openai import AsyncOpenAI, OpenAI
@@ -70,7 +68,11 @@ class ConversationMemory:
     distinct, matching Flyte's data-lineage model.
     """
 
-    messages: list[Message] = field(default_factory=list)
+    messages: list[Message] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.messages is None:
+            self.messages = []
 
     def append(self, role: str, content: str) -> ConversationMemory:
         """Return a *new* ConversationMemory with the message appended."""
@@ -197,7 +199,7 @@ async def _critique(task_prompt: str, code: str) -> str:
     response = await client.chat.completions.create(
         model="gpt-4o",
         max_tokens=2048,
-        messages=[{"role": "system", "content": CRITIC_SYSTEM}] + [,
+        messages=[{"role": "system", "content": CRITIC_SYSTEM}] + [
             {
                 "role": "user",
                 "content": (
