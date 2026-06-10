@@ -3,6 +3,18 @@ This repo implements code examples from Antonio Giulli's [Agentic Design Pattern
 
 The repo ships with the [configuration](./.flyte/config.yaml) so you can run all examples in the [Flyte Devbox](https://www.union.ai/docs/v2/union/user-guide/run-modes/running-devbox/).
 
+## Built on Flyte's agentic primitives
+
+Where it makes the pattern clearer, the notebooks use Flyte v2's first-class agent toolkit (`flyte.ai.agents`) instead of a hand-rolled `@flyte.trace` tool loop:
+
+- **`Agent`** — a batteries-included LLM ↔ tool loop with declarative `@tool`s, MCP servers, optional `MemoryStore`, HITL approval, and a typed `AgentResult`. Sync `agent.run(...)`; async `await agent.run.aio(...)`. Used in routing (2), tool-use (5), planning (6), multi-agent (7), RAG (14), inter-agent (15), prioritization (20); subclassed to wrap the loop in goal-setting (11), reasoning (17), and guardrails (18).
+- **`MemoryStore`** — a session-keyed transcript + path-addressed artifacts backed by `flyte.io.Dir`, with optimistic concurrency (`expected_sha`). Memory management (8).
+- **`MCPServerSpec`** — connect a real MCP server over stdio/HTTP and surface its tools transparently. Model Context Protocol (10).
+- **`@tool(requires_approval=True)`** — a human-in-the-loop approval gate via `flyteplugins-hitl`. Human-in-the-loop (13), guardrails (18).
+- **`CodeModeAgent` + `flyte.sandbox.create` / `orchestrate_local`** — run LLM-generated code in fresh, isolated sandboxes. Learning and adaptation (9).
+
+The remaining patterns (prompt chaining, parallelization, reflection, exception handling, resource-aware optimization, evaluation, exploration) stay on plain `@env.task` composition — each notebook ends with a short note on *why* the harness isn't a win there.
+
 ## Part One: Core Patterns
 
 | # | Pattern | Description |
