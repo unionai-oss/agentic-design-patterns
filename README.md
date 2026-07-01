@@ -1,5 +1,5 @@
-# agentic-design-patterns
-This repo implements code examples from Antonio Giulli's [Agentic Design Patterns](https://link.springer.com/book/10.1007/978-3-032-01402-3) book with Flyte V2.
+# Agentic Design Patterns on Flyte V2
+This repo implements code examples from Antonio Gulli's [Agentic Design Patterns](https://link.springer.com/book/10.1007/978-3-032-01402-3) book with Flyte V2.
 
 The repo ships with the [configuration](./.flyte/config.yaml) so you can run all examples in the [Flyte Devbox](https://www.union.ai/docs/v2/union/user-guide/run-modes/running-devbox/).
 
